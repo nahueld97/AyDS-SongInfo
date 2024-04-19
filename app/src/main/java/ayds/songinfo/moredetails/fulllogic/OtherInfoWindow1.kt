@@ -19,7 +19,7 @@ import retrofit2.converter.scalars.ScalarsConverterFactory
 import java.io.IOException
 import java.util.Locale
 
-class OtherInfoWindow : Activity() {
+class OtherInfoWindow1 : Activity() {
     private var artistBiographyTextView: TextView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
