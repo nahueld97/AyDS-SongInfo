@@ -44,11 +44,7 @@ class OtherInfoWindow : Activity() {
             if (artistInfo != null) { // exists in db
                 biography = "[*]" + artistInfo.biography
                 val articleUrl = artistInfo.articleUrl
-                findViewById<View>(R.id.openUrlButton1).setOnClickListener {
-                    val intent = Intent(Intent.ACTION_VIEW)
-                    intent.setData(Uri.parse(articleUrl))
-                    startActivity(intent)
-                }
+                configureOpenUrlButton(articleUrl)
             } else {
                 try {
                     val callResponse = lastFMAPI.getArtistInfo(artistName).execute()
@@ -76,11 +72,7 @@ class OtherInfoWindow : Activity() {
                             .start()
                     }
                     val urlString = url.asString
-                    findViewById<View>(R.id.openUrlButton1).setOnClickListener {
-                        val intent = Intent(Intent.ACTION_VIEW)
-                        intent.setData(Uri.parse(urlString))
-                        startActivity(intent)
-                    }
+                    configureOpenUrlButton(urlString)
                 } catch (e: IOException) {
                     Log.e("TAG", "Error $e")
                     e.printStackTrace()
@@ -95,6 +87,14 @@ class OtherInfoWindow : Activity() {
                 artistBiographyTextView!!.text = Html.fromHtml(finalBiography,Html.FROM_HTML_MODE_LEGACY)
             }
         }.start()
+    }
+
+    private fun configureOpenUrlButton(articleUrl: String) {
+        findViewById<View>(R.id.openUrlButton1).setOnClickListener {
+            val intent = Intent(Intent.ACTION_VIEW)
+            intent.setData(Uri.parse(articleUrl))
+            startActivity(intent)
+        }
     }
 
     private var dataBase: ArticleDatabase? = null
