@@ -19,6 +19,9 @@ import retrofit2.converter.scalars.ScalarsConverterFactory
 import java.io.IOException
 import java.util.Locale
 
+private const val IMAGE_URL =
+    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Lastfm_logo.svg/320px-Lastfm_logo.svg.png"
+
 class OtherInfoWindow : Activity() {
     private var artistBiographyTextView: TextView? = null
 
@@ -29,63 +32,71 @@ class OtherInfoWindow : Activity() {
         open(intent.getStringExtra(ARTIST_NAME_EXTRA))
     }
 
-    private fun getArtistInfo(artistName: String?) {
+    private fun showArtistInfo(artistName: String?) {
+        Log.e("TAG", "artistName $artistName")
+        Thread {
+            val artistInfo = dataBase!!.ArticleDao().getArticleByArtistName(artistName!!)
+            val biography = if (artistInfo != null) {
+                configureOpenUrlButton(artistInfo.articleUrl)
+                "[*]" + artistInfo.biography
+            } else {
+                configureOpenUrlButton(getArtistURLFromApi(artistName))
+                getArtistInfoFromAPI(artistName)
+            }
 
-        // create
+            Log.e("TAG", "Get Image from $IMAGE_URL")
+            runOnUiThread {
+                Picasso.get().load(IMAGE_URL).into(findViewById<View>(R.id.imageView1) as ImageView)
+                artistBiographyTextView!!.text = Html.fromHtml(
+                    biography,
+                    Html.FROM_HTML_MODE_LEGACY
+                )
+            }
+        }.start()
+    }
+    private fun getArtistURLFromApi(artistName: String): String {
+        val jsonObject = getJsonArtistInfo(artistName)
+        val artistObject = jsonObject["artist"].getAsJsonObject()
+        return artistObject["url"].asString
+    }
+
+    private fun getJsonArtistInfo(artistName: String) : JsonObject {
         val retrofit = Retrofit.Builder()
             .baseUrl("https://ws.audioscrobbler.com/2.0/")
             .addConverterFactory(ScalarsConverterFactory.create())
             .build()
         val lastFMAPI = retrofit.create(LastFMAPI::class.java)
-        Log.e("TAG", "artistName $artistName")
-        Thread {
-            val artistInfo = dataBase!!.ArticleDao().getArticleByArtistName(artistName!!)
-            var biography = ""
-            if (artistInfo != null) { // exists in db
-                biography = "[*]" + artistInfo.biography
-                val articleUrl = artistInfo.articleUrl
-                configureOpenUrlButton(articleUrl)
-            } else {
-                try {
-                    val callResponse = lastFMAPI.getArtistInfo(artistName).execute()
-                    Log.e("TAG", "JSON " + callResponse.body())
-                    val gson = Gson()
-                    val jsonObject: JsonObject = gson.fromJson(callResponse.body(), JsonObject::class.java)
-                    val artistObject = jsonObject["artist"].getAsJsonObject()
-                    val bioObject = artistObject["bio"].getAsJsonObject()
-                    val extract = bioObject["content"]
-                    val url = artistObject["url"]
-                    if (extract == null) {
-                        biography = "No Results"
-                    } else {
-                        biography = extract.asString.replace("\\n", "\n")
-                        biography = formatBiographyText(biography, artistName)
 
-                        val textToSave = biography
-                        Thread {
-                            dataBase!!.ArticleDao().insertArticle(
-                                ArticleEntity(
-                                    artistName, textToSave, url.asString
-                                )
-                            )
-                        }
-                            .start()
-                    }
-                    val urlString = url.asString
-                    configureOpenUrlButton(urlString)
-                } catch (e: IOException) {
-                    Log.e("TAG", "Error $e")
-                    e.printStackTrace()
-                }
+        val callResponse = lastFMAPI.getArtistInfo(artistName).execute()
+        Log.e("TAG", "JSON " + callResponse.body())
+        val gson = Gson()
+        return gson.fromJson(callResponse.body(), JsonObject::class.java)
+    }
+
+    private fun getArtistInfoFromAPI(artistName: String): String {
+        try {
+            val jsonObject = getJsonArtistInfo(artistName)
+            val artistObject = jsonObject["artist"].getAsJsonObject()
+            val bioObject = artistObject["bio"].getAsJsonObject()
+            val extract = bioObject["content"]
+            return if (extract == null) {
+                "No Results"
+            } else {
+                val biography = extract.asString.replace("\\n", "\n")
+                val formattedBiography = formatBiographyText(biography, artistName)
+                saveArtistInfoToDatabase(artistName, formattedBiography, artistObject["url"].asString)
+                formattedBiography
             }
-            val imageUrl =
-                "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Lastfm_logo.svg/320px-Lastfm_logo.svg.png"
-            Log.e("TAG", "Get Image from $imageUrl")
-            val finalBiography = biography
-            runOnUiThread {
-                Picasso.get().load(imageUrl).into(findViewById<View>(R.id.imageView1) as ImageView)
-                artistBiographyTextView!!.text = Html.fromHtml(finalBiography,Html.FROM_HTML_MODE_LEGACY)
-            }
+        } catch (e: IOException) {
+            Log.e("TAG", "Error $e")
+            e.printStackTrace()
+            return "Error: ${e.message}"
+        }
+    }
+
+    private fun saveArtistInfoToDatabase(artistName: String, biography: String, url: String) {
+        Thread {
+            dataBase!!.ArticleDao().insertArticle(ArticleEntity(artistName, biography, url))
         }.start()
     }
 
@@ -106,7 +117,7 @@ class OtherInfoWindow : Activity() {
             Log.e("TAG", "" + dataBase!!.ArticleDao().getArticleByArtistName("test"))
             Log.e("TAG", "" + dataBase!!.ArticleDao().getArticleByArtistName("nada"))
         }.start()
-        getArtistInfo(artist)
+        showArtistInfo(artist)
     }
 
     companion object {
