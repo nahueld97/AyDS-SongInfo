@@ -5,8 +5,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.text.Html
-import android.util.Log
-import android.view.View
+import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.room.Room.databaseBuilder
@@ -18,124 +17,176 @@ import retrofit2.Retrofit
 import retrofit2.converter.scalars.ScalarsConverterFactory
 import java.io.IOException
 import java.util.Locale
+import kotlin.concurrent.thread
 
-private const val IMAGE_URL =
-    "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Lastfm_logo.svg/320px-Lastfm_logo.svg.png"
+private const val IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Lastfm_logo.svg/320px-Lastfm_logo.svg.png"
+private const val DATABASE_NAME = "article-database"
+private const val API_BASE_URL = "https://ws.audioscrobbler.com/2.0/"
+
+data class ArtistBiography(val artistName: String, val biography: String, val articleUrl: String)
 
 class OtherInfoWindow : Activity() {
-    private var artistBiographyTextView: TextView? = null
+    private lateinit var artistBiographyTextView: TextView
+    private lateinit var articleDatabase: ArticleDatabase
+    private lateinit var openUrlButton: Button
+    private lateinit var lastFMImageView: ImageView
+    private lateinit var lastFMAPI: LastFMAPI
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_other_info)
-        artistBiographyTextView = findViewById(R.id.textPane1)
-        open(intent.getStringExtra(ARTIST_NAME_EXTRA))
+
+        initViewProperties()
+        initArticleDatabase()
+        initLastFMAPI()
+
+        getArtistInfoAsync()
+
     }
 
-    private fun showArtistInfo(artistName: String?) {
-        Log.e("TAG", "artistName $artistName")
-        Thread {
-            val artistInfo = dataBase!!.ArticleDao().getArticleByArtistName(artistName!!)
-            val biography = if (artistInfo != null) {
-                configureOpenUrlButton(artistInfo.articleUrl)
-                "[*]" + artistInfo.biography
-            } else {
-                configureOpenUrlButton(getArtistURLFromApi(artistName))
-                getArtistInfoFromAPI(artistName)
-            }
+    private fun getArtistName() =
+        intent.getStringExtra(ARTIST_NAME_EXTRA) ?: throw Exception("Missing artist name")
 
-            Log.e("TAG", "Get Image from $IMAGE_URL")
-            runOnUiThread {
-                Picasso.get().load(IMAGE_URL).into(findViewById<View>(R.id.imageView1) as ImageView)
-                artistBiographyTextView!!.text = Html.fromHtml(
-                    biography,
-                    Html.FROM_HTML_MODE_LEGACY
-                )
-            }
+    private fun getArtistInfoAsync() {
+        thread {
+            showArtistInfo()
         }.start()
     }
-    private fun getArtistURLFromApi(artistName: String): String {
-        val jsonObject = getJsonArtistInfo(artistName)
-        val artistObject = jsonObject["artist"].getAsJsonObject()
-        return artistObject["url"].asString
-    }
 
-    private fun getJsonArtistInfo(artistName: String) : JsonObject {
+    private fun initLastFMAPI() {
         val retrofit = Retrofit.Builder()
-            .baseUrl("https://ws.audioscrobbler.com/2.0/")
+            .baseUrl(API_BASE_URL)
             .addConverterFactory(ScalarsConverterFactory.create())
             .build()
-        val lastFMAPI = retrofit.create(LastFMAPI::class.java)
-
-        val callResponse = lastFMAPI.getArtistInfo(artistName).execute()
-        Log.e("TAG", "JSON " + callResponse.body())
-        val gson = Gson()
-        return gson.fromJson(callResponse.body(), JsonObject::class.java)
+        lastFMAPI = retrofit.create(LastFMAPI::class.java)
     }
 
-    private fun getArtistInfoFromAPI(artistName: String): String {
-        try {
-            val jsonObject = getJsonArtistInfo(artistName)
-            val artistObject = jsonObject["artist"].getAsJsonObject()
-            val bioObject = artistObject["bio"].getAsJsonObject()
-            val extract = bioObject["content"]
-            return if (extract == null) {
-                "No Results"
-            } else {
-                val biography = extract.asString.replace("\\n", "\n")
-                val formattedBiography = formatBiographyText(biography, artistName)
-                saveArtistInfoToDatabase(artistName, formattedBiography, artistObject["url"].asString)
-                formattedBiography
+    private fun initArticleDatabase() {
+        articleDatabase = databaseBuilder(this, ArticleDatabase::class.java, DATABASE_NAME).build()
+    }
+
+    private fun initViewProperties() {
+        artistBiographyTextView = findViewById(R.id.textPane1)
+        openUrlButton = findViewById(R.id.openUrlButton)
+        lastFMImageView = findViewById(R.id.lastFMImageView)
+    }
+
+    private fun showArtistInfo() {
+        val artistBiography = getArtistInfoFromRepository()
+        updateUi(artistBiography)
+    }
+
+    private fun getArtistInfoFromRepository(): ArtistBiography {
+        val artistName = getArtistName()
+        val dbArticle = getArticleFromDB(artistName)
+
+        val artistBiography: ArtistBiography
+
+        if (dbArticle != null) {
+            artistBiography = dbArticle.markItAsLocal()
+        } else {
+            artistBiography = getArtistInfoFromAPI(artistName)
+            if (artistBiography.biography.isNotEmpty()) {
+                saveArtistInfoToDatabase(artistBiography)
             }
-        } catch (e: IOException) {
-            Log.e("TAG", "Error $e")
-            e.printStackTrace()
-            return "Error: ${e.message}"
+        }
+        return artistBiography
+    }
+
+    private fun ArtistBiography.markItAsLocal() = copy(biography = "[*]$biography")
+
+    private fun getArticleFromDB(artistName: String): ArtistBiography? {
+        val artistEntity = articleDatabase.ArticleDao().getArticleByArtistName(artistName)
+        return artistEntity?.let {
+            ArtistBiography(artistName, artistEntity.biography, artistEntity.articleUrl)
         }
     }
 
-    private fun saveArtistInfoToDatabase(artistName: String, biography: String, url: String) {
-        Thread {
-            dataBase!!.ArticleDao().insertArticle(ArticleEntity(artistName, biography, url))
-        }.start()
-    }
-
-    private fun configureOpenUrlButton(articleUrl: String) {
-        findViewById<View>(R.id.openUrlButton1).setOnClickListener {
-            val intent = Intent(Intent.ACTION_VIEW)
-            intent.setData(Uri.parse(articleUrl))
-            startActivity(intent)
+    private fun updateUi(artistBiography: ArtistBiography) {
+        runOnUiThread {
+            updateOpenUrlButton(artistBiography)
+            updateLastFMLogo()
+            updateArticleText(artistBiography)
         }
     }
 
-    private var dataBase: ArticleDatabase? = null
-    private fun open(artist: String?) {
-        dataBase =
-            databaseBuilder(this, ArticleDatabase::class.java, "database-name-thename").build()
-        Thread {
-            dataBase!!.ArticleDao().insertArticle(ArticleEntity("test", "sarasa", ""))
-            Log.e("TAG", "" + dataBase!!.ArticleDao().getArticleByArtistName("test"))
-            Log.e("TAG", "" + dataBase!!.ArticleDao().getArticleByArtistName("nada"))
-        }.start()
-        showArtistInfo(artist)
+    private fun updateArticleText(artistBiography: ArtistBiography) {
+        val text = artistBiography.biography.replace("\\n", "\n")
+        artistBiographyTextView.text = Html.fromHtml(textToHtml(text, artistBiography.artistName),Html.FROM_HTML_MODE_LEGACY)
+    }
+
+    private fun textToHtml(text: String, term: String?): String {
+        val builder = StringBuilder()
+        builder.append("<html><div width=400>")
+        builder.append("<font face=\"arial\">")
+        val textWithBold = text
+            .replace("'", " ")
+            .replace("\n", "<br>")
+            .replace(
+                "(?i)$term".toRegex(),
+                "<b>" + term!!.uppercase(Locale.getDefault()) + "</b>"
+            )
+        builder.append(textWithBold)
+        builder.append("</font></div></html>")
+        return builder.toString()
+    }
+
+    private fun updateLastFMLogo() {
+        Picasso.get().load(IMAGE_URL).into(lastFMImageView)
+    }
+
+    private fun getArtistInfoFromAPI(artistName: String): ArtistBiography {
+        var artistBiography = ArtistBiography(artistName, "", "")
+        try {
+            val callResponse = getSongFromService(artistName)
+            artistBiography = getArtistBioFromExternalData(callResponse.body(), artistName)
+        } catch (e1: IOException) {
+            e1.printStackTrace()
+        }
+        return artistBiography
+    }
+
+    private fun getArtistBioFromExternalData(
+        serviceData: String?,
+        artistName: String
+    ): ArtistBiography {
+        val gson = Gson()
+        val jsonObject = gson.fromJson(serviceData, JsonObject::class.java)
+
+        val artist = jsonObject["artist"].getAsJsonObject()
+        val bio = artist["bio"].getAsJsonObject()
+        val extract = bio["content"]
+        val url = artist["url"]
+        val text = extract?.asString ?: "No Results"
+
+        return ArtistBiography(artistName, text, url.asString)
+    }
+
+    private fun getSongFromService(artistName: String) =
+        lastFMAPI.getArtistInfo(artistName).execute()
+
+
+    private fun saveArtistInfoToDatabase(artistBiography: ArtistBiography) {
+        articleDatabase.ArticleDao().insertArticle(
+            ArticleEntity(
+                artistBiography.artistName, artistBiography.biography, artistBiography.articleUrl
+            )
+        )
+    }
+
+    private fun updateOpenUrlButton(artistBiography: ArtistBiography) {
+        openUrlButton.setOnClickListener {
+            navigateToUrl(artistBiography.articleUrl)
+        }
+    }
+
+    private fun navigateToUrl(url: String) {
+        val intent = Intent(Intent.ACTION_VIEW)
+        intent.setData(Uri.parse(url))
+        startActivity(intent)
     }
 
     companion object {
         const val ARTIST_NAME_EXTRA = "artistName"
-        fun formatBiographyText(text: String, term: String?): String {
-            val builder = StringBuilder()
-            builder.append("<html><div width=400>")
-            builder.append("<font face=\"arial\">")
-            val textWithBold = text
-                .replace("'", " ")
-                .replace("\n", "<br>")
-                .replace(
-                    "(?i)$term".toRegex(),
-                    "<b>" + term!!.uppercase(Locale.getDefault()) + "</b>"
-                )
-            builder.append(textWithBold)
-            builder.append("</font></div></html>")
-            return builder.toString()
-        }
     }
 }
