@@ -1,42 +1,33 @@
 package ayds.songinfo.moredetails.data
 
-import ayds.songinfo.moredetails.data.external.LastFMService
-import ayds.songinfo.moredetails.data.local.ArticleDatabase
-import ayds.songinfo.moredetails.domain.entity.ArticleEntity
+import ayds.songinfo.moredetails.data.external.ExternalService
+import ayds.songinfo.moredetails.data.local.LocalService
+import ayds.songinfo.moredetails.domain.entity.ArtistBiography
 import ayds.songinfo.moredetails.domain.repository.ArtistInfoRepository
 
-class ArtistInfoRepositoryImpl : ArtistInfoRepository {
+class ArtistInfoRepositoryImpl(
+    private var local: LocalService,
+    private var external: ExternalService
+) : ArtistInfoRepository {
 
-    private lateinit var local: ArticleDatabase
-    private lateinit var external : LastFMService
 
-    override fun getArtistInfo(artistName: String): ArticleEntity {
-        val dbArticle = getArticleFromDB(artistName)
+    override fun getArtistInfo(artistName: String): ArtistBiography {
+        val dbArticle = local.getArticle(artistName)
 
-        val articleEntity: ArticleEntity
+        val artistBiography: ArtistBiography
 
         if (dbArticle != null) {
-            articleEntity = dbArticle.markItAsLocal()
+            artistBiography = dbArticle.markItAsLocal()
         } else {
-            articleEntity = getArtistInfoFromAPI(artistName)
-            if (articleEntity.biography.isNotEmpty()) {
-                saveArtistInfoToDatabase(articleEntity)
+            artistBiography = external.getArticleByArtistName(artistName)
+            if (artistBiography.biography.isNotEmpty()) {
+                local.saveArtist(artistBiography)
             }
         }
-        return articleEntity
+        return artistBiography
     }
 
-    private fun getArticleFromDB(artistName: String): ArticleEntity? {
-        return local.ArticleDao().getArticleByArtistName(artistName)
-    }
+    private fun ArtistBiography.markItAsLocal() = copy(biography = "[*]$biography")
 
-    private fun getArtistInfoFromAPI(artistName: String): ArticleEntity {
-        return external.getArticleByArtistName(artistName)
-    }
-    private fun ArticleEntity.markItAsLocal() = copy(biography = "[*]$biography")
-
-    private fun saveArtistInfoToDatabase(artistBiography: ArticleEntity) {
-        local.ArticleDao().insertArticle(artistBiography)
-    }
 
 }

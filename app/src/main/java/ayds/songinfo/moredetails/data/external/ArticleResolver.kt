@@ -1,18 +1,18 @@
 package ayds.songinfo.moredetails.data.external
 
-import ayds.songinfo.moredetails.domain.entity.ArticleEntity
+import ayds.songinfo.moredetails.domain.entity.ArtistBiography
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 
-interface ArticleResolver{
-    fun getArtistBioFromExternalData(serviceData: String?, artistName: String): ArticleEntity
+interface ArticleResolver {
+    fun get(serviceData: String?, artistName: String): ArtistBiography
 }
 
-class ArticleResolverImpl : ArticleResolver{
-    override fun getArtistBioFromExternalData(
+class ArticleResolverImpl : ArticleResolver {
+    override fun get(
         serviceData: String?,
         artistName: String
-    ): ArticleEntity {
+    ): ArtistBiography {
         val gson = Gson()
         val jsonObject = gson.fromJson(serviceData, JsonObject::class.java)
 
@@ -22,6 +22,6 @@ class ArticleResolverImpl : ArticleResolver{
         val url = artist["url"]
         val text = extract?.asString ?: "No Results"
 
-        return ArticleEntity(artistName, text, url.asString)
+        return ArtistBiography(artistName, text, url.asString)
     }
 }

@@ -5,16 +5,15 @@ import android.net.Uri
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
-import ayds.songinfo.moredetails.domain.entity.ArticleEntity
-import ayds.songinfo.moredetails.presentation.presenter.OtherInfoWindow
+import ayds.songinfo.moredetails.domain.entity.ArtistBiography
 import com.squareup.picasso.Picasso
 
 private const val IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Lastfm_logo.svg/320px-Lastfm_logo.svg.png"
 interface ArtistInfoView {
     var presenter : OtherInfoWindow
-    fun updateOpenUrlButton(artistBiography: ArticleEntity)
+    fun updateOpenUrlButton(artistBiography: ArtistBiography)
     fun updateLastFMLogo()
-    fun updateArticleText(artistBiography: ArticleEntity)
+    fun updateArticleText(artistBiography: ArtistBiography)
 }
 
 class ArtisInfoViewImpl(
@@ -26,7 +25,7 @@ class ArtisInfoViewImpl(
 
     private var artistBiographyHelper: ArtistBiographyHelper = ArtistBiographyHelperImp()
 
-    override fun updateOpenUrlButton(artistBiography: ArticleEntity) {
+    override fun updateOpenUrlButton(artistBiography: ArtistBiography) {
         openUrlButton.setOnClickListener {
             navigateToUrl(artistBiography.articleUrl)
         }
@@ -36,7 +35,7 @@ class ArtisInfoViewImpl(
         Picasso.get().load(IMAGE_URL).into(lastFMImageView)
     }
 
-    override fun updateArticleText(artistBiography: ArticleEntity) {
+    override fun updateArticleText(artistBiography: ArtistBiography) {
         val text = artistBiography.biography.replace("\\n", "\n")
         artistBiographyTextView.text = artistBiographyHelper.getArtistDescriptionText(text,artistBiography.artistName)
     }
