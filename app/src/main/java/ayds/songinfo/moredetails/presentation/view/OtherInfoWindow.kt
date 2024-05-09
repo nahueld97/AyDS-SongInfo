@@ -9,31 +9,39 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import ayds.songinfo.R
-import ayds.songinfo.moredetails.domain.entity.ArtistBiography
-import ayds.songinfo.moredetails.domain.repository.ArtistInfoRepository
-import ayds.songinfo.moredetails.presentation.presenter.OtherInfoPresenter
+import ayds.songinfo.moredetails.injector.OtherInfoInjector
 import com.squareup.picasso.Picasso
-import java.util.Locale
-import kotlin.concurrent.thread
-
-
-private const val IMAGE_URL = "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Lastfm_logo.svg/320px-Lastfm_logo.svg.png"
-
+import ayds.songinfo.moredetails.presentation.presenter.OtherInfoPresenter
+import ayds.songinfo.moredetails.presentation.ArtistBiographyUiState
 
 class OtherInfoWindow : Activity(){
 
-    private lateinit var artistInfoRepository: ArtistInfoRepository
-    private lateinit var presenter: OtherInfoPresenter
     private lateinit var openUrlButton: Button
     private lateinit var lastFMImageView: ImageView
     private lateinit var artistBiographyTextView: TextView
 
+    private lateinit var presenter: OtherInfoPresenter
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        presenter.observer.subscribe{artistBiography = updateUi(ArtistBiography)}
         setContentView(R.layout.activity_other_info)
+
         initViewProperties()
+        initPresenter()
+
+        observePresenter()
         getArtistInfoAsync()
+    }
+
+    private fun initPresenter() {
+        OtherInfoInjector.initGraph(this)
+        presenter = OtherInfoInjector.presenter
+    }
+
+    private fun observePresenter(){
+        presenter.artistBiographyObservable.subscribe { artistBiography  ->
+            updateUi(artistBiography)
+        }
     }
 
     private fun initViewProperties() {
@@ -43,61 +51,43 @@ class OtherInfoWindow : Activity(){
     }
 
     private fun getArtistName() =
-        intent.getStringExtra(OtherInfoWindow.ARTIST_NAME_EXTRA) ?: throw Exception("Missing artist name")
+        intent.getStringExtra(ARTIST_NAME_EXTRA) ?: throw Exception("Missing artist name")
 
     private fun getArtistInfoAsync() {
-        thread {
+        Thread {
             showArtistInfo()
         }.start()
     }
 
     private fun showArtistInfo() {
         val artistName = getArtistName()
-        val artistBiography = artistInfoRepository.getArtistInfo(artistName)
-        updateUi(artistBiography)
+        presenter.getArtistInfo(artistName)
     }
 
-    private fun updateUi(artistBiography: ArtistBiography) {
+    private fun updateUi(uiState: ArtistBiographyUiState) {
         runOnUiThread {
-            updateOpenUrlButton(artistBiography)
-            updateLastFMLogo()
-            updateArticleText(artistBiography)
+            updateOpenUrlButton(uiState.articleUrl)
+            updateLastFMLogo(uiState.imageUrl)
+            updateArticleText(uiState.infoHtml)
         }
     }
-    private fun updateOpenUrlButton(artistBiography: ArtistBiography) {
+    private fun updateOpenUrlButton(url: String) {
         openUrlButton.setOnClickListener {
-            navigateToUrl(artistBiography.articleUrl)
+            navigateToUrl(url)
         }
     }
-    private fun updateLastFMLogo() {
-        Picasso.get().load(IMAGE_URL).into(lastFMImageView)
+    private fun updateLastFMLogo(url: String) {
+        Picasso.get().load(url).into(lastFMImageView)
     }
 
-    private fun updateArticleText(artistBiography: ArtistBiography) {
-        val text = artistBiography.biography.replace("\\n", "\n")
-        artistBiographyTextView.text = Html.fromHtml(textToHtml(text, artistBiography.artistName),
+    private fun updateArticleText(infoHtml: String) {
+        artistBiographyTextView.text = Html.fromHtml(infoHtml,
             Html.FROM_HTML_MODE_LEGACY)
     }
     private fun navigateToUrl(url: String) {
         val intent = Intent(Intent.ACTION_VIEW)
         intent.setData(Uri.parse(url))
         startActivity(intent)
-    }
-
-    private fun textToHtml(text: String, term: String?): String {
-        val builder = StringBuilder()
-        builder.append("<html><div width=400>")
-        builder.append("<font face=\"arial\">")
-        val textWithBold = text
-            .replace("'", " ")
-            .replace("\n", "<br>")
-            .replace(
-                "(?i)$term".toRegex(),
-                "<b>" + term!!.uppercase(Locale.getDefault()) + "</b>"
-            )
-        builder.append(textWithBold)
-        builder.append("</font></div></html>")
-        return builder.toString()
     }
 
     companion object {
