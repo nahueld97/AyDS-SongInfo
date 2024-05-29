@@ -1,7 +1,7 @@
-package ayds.songinfo.moredetails.data.external
+package ayds.artist.external.lastFM.data
 
 import ayds.songinfo.moredetails.domain.entity.ArtistBiography
 
-interface ExternalService {
+interface LastFMService {
     fun getArticleByArtistName(artistName: String):ArtistBiography
 }

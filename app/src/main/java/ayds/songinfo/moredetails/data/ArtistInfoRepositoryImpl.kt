@@ -1,13 +1,14 @@
 package ayds.songinfo.moredetails.data
 
-import ayds.songinfo.moredetails.data.external.ExternalService
+import ayds.artist.external.lastFM.data.LastFMService
+import ayds.artist.external.lastFM.data.LastFmBiography
 import ayds.songinfo.moredetails.data.local.LocalService
 import ayds.songinfo.moredetails.domain.entity.ArtistBiography
 import ayds.songinfo.moredetails.domain.repository.ArtistInfoRepository
 
 class ArtistInfoRepositoryImpl(
     private var local: LocalService,
-    private var external: ExternalService
+    private var external: LastFMService
 ) : ArtistInfoRepository {
 
 
@@ -19,13 +20,16 @@ class ArtistInfoRepositoryImpl(
         if (dbArticle != null) {
             artistBiography = dbArticle.apply { markItAsLocal() }
         } else {
-            artistBiography = external.getArticleByArtistName(artistName)
+            artistBiography = external.getArticleByArtistName(artistName).toArtistBiography()
             if (artistBiography.biography.isNotEmpty()) {
                 local.saveArtist(artistBiography)
             }
         }
         return artistBiography
     }
+
+    private fun LastFmBiography.toArtistBiography() =
+        ArtistBiography(artistName, biography, articleUrl)
 
     private fun ArtistBiography.markItAsLocal() {
         isLocallyStored = true
