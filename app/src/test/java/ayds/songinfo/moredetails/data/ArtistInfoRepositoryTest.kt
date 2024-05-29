@@ -1,6 +1,6 @@
 package ayds.songinfo.moredetails.data
 
-import ayds.songinfo.moredetails.data.external.ExternalService
+import ayds.artist.external.lastFM.data.LastFMService
 import ayds.songinfo.moredetails.data.local.LocalService
 import ayds.songinfo.moredetails.domain.entity.ArtistBiography
 import ayds.songinfo.moredetails.domain.repository.ArtistInfoRepository
@@ -12,7 +12,7 @@ import org.junit.Test
 class ArtistInfoRepositoryTest {
 
     private var local: LocalService = mockk(relaxUnitFun = true)
-    private var external: ExternalService = mockk(relaxUnitFun = true)
+    private var external: LastFMService = mockk(relaxUnitFun = true)
 
     private val artistInfoRepository: ArtistInfoRepository =
         ArtistInfoRepositoryImpl(local, external)
