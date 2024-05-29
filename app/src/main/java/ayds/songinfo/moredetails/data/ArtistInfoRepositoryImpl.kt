@@ -17,7 +17,7 @@ class ArtistInfoRepositoryImpl(
         val artistBiography: ArtistBiography
 
         if (dbArticle != null) {
-            artistBiography = dbArticle.markItAsLocal()
+            artistBiography = dbArticle.apply { markItAsLocal() }
         } else {
             artistBiography = external.getArticleByArtistName(artistName)
             if (artistBiography.biography.isNotEmpty()) {
@@ -27,7 +27,7 @@ class ArtistInfoRepositoryImpl(
         return artistBiography
     }
 
-    private fun ArtistBiography.markItAsLocal() = copy(biography = "[*]$biography")
-
-
+    private fun ArtistBiography.markItAsLocal() {
+        isLocallyStored = true
+    }
 }
