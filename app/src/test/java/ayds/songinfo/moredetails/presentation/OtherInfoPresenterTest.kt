@@ -1,6 +1,6 @@
 package ayds.songinfo.moredetails.presentation
 
-import ayds.songinfo.moredetails.domain.entity.ArtistBiography
+import ayds.songinfo.moredetails.domain.entity.Card
 import ayds.songinfo.moredetails.domain.repository.ArtistInfoRepository
 import ayds.songinfo.moredetails.presentation.presenter.*
 import io.mockk.every
@@ -10,22 +10,22 @@ import org.junit.Test
 
 class OtherInfoPresenterTest {
     private val artistInfoRepository: ArtistInfoRepository = mockk()
-    private val artistBiographyHelper: ArtistBiographyHelper = mockk()
+    private val cardHelper: CardHelper = mockk()
     private val otherInfoPresenter: OtherInfoPresenter =
-        OtherInfoPresenterImpl(artistInfoRepository, artistBiographyHelper)
+        OtherInfoPresenterImpl(artistInfoRepository, cardHelper)
 
     @Test
     fun getArtistInfoTest() {
-        val artistBiography = ArtistBiography("artistName", "biography", "articleUrl")
-        every { artistInfoRepository.getArtistInfo("artistName") } returns artistBiography
-        every { artistBiographyHelper.getArtistDescriptionText(artistBiography) } returns "description"
-        val onUiStateHandler: (ArtistBiographyUiState) -> Unit = mockk(relaxed = true)
-        otherInfoPresenter.artistBiographyObservable.subscribe(onUiStateHandler)
+        val card = Card("artistName", "biography", "articleUrl")
+        every { artistInfoRepository.getCard("artistName") } returns card
+        every { cardHelper.getDescription(card) } returns "description"
+        val onUiStateHandler: (CardUiState) -> Unit = mockk(relaxed = true)
+        otherInfoPresenter.cardObservable.subscribe(onUiStateHandler)
 
-        otherInfoPresenter.getArtistInfo("artistName")
+        otherInfoPresenter.updateCard("artistName")
 
         verify { onUiStateHandler(
-            ArtistBiographyUiState(
+            CardUiState(
                 "artistName",
                 "description",
                 "articleUrl"

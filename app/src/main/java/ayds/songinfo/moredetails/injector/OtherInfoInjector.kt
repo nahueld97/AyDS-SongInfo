@@ -4,9 +4,9 @@ import android.content.Context
 import androidx.room.Room
 import ayds.artist.external.newyorktimes.injector.LastFMInjector
 import ayds.songinfo.moredetails.data.ArtistInfoRepositoryImpl
-import ayds.songinfo.moredetails.data.local.ArticleDatabase
+import ayds.songinfo.moredetails.data.local.CardDatabase
 import ayds.songinfo.moredetails.data.local.LocalServiceImpl
-import ayds.songinfo.moredetails.presentation.ArtistBiographyHelperImp
+import ayds.songinfo.moredetails.presentation.CardHelperImp
 import ayds.songinfo.moredetails.presentation.presenter.OtherInfoPresenter
 import ayds.songinfo.moredetails.presentation.presenter.OtherInfoPresenterImpl
 
@@ -20,17 +20,17 @@ object OtherInfoInjector {
     fun initGraph(context: Context) {
         LastFMInjector.init()
 
-        val articleDatabase = Room.databaseBuilder(
+        val cardDatabase = Room.databaseBuilder(
             context,
-            ArticleDatabase::class.java,
+            CardDatabase::class.java,
             DATABASE_NAME
         ).build()
 
-        val localService = LocalServiceImpl(articleDatabase)
+        val localService = LocalServiceImpl(cardDatabase)
 
         val artistInfoRepository = ArtistInfoRepositoryImpl(localService, LastFMInjector.lastFmService)
 
-        val artistBiographyHelper = ArtistBiographyHelperImp()
+        val artistBiographyHelper = CardHelperImp()
 
         presenter = OtherInfoPresenterImpl(artistInfoRepository, artistBiographyHelper)
     }

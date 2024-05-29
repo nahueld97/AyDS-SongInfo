@@ -2,35 +2,35 @@ package ayds.songinfo.moredetails.presentation.presenter
 
 import ayds.observer.Observable
 import ayds.observer.Subject
-import ayds.songinfo.moredetails.domain.entity.ArtistBiography
+import ayds.songinfo.moredetails.domain.entity.Card
 import ayds.songinfo.moredetails.domain.repository.ArtistInfoRepository
-import ayds.songinfo.moredetails.presentation.ArtistBiographyHelper
-import ayds.songinfo.moredetails.presentation.ArtistBiographyUiState
+import ayds.songinfo.moredetails.presentation.CardHelper
+import ayds.songinfo.moredetails.presentation.CardUiState
 
 
 interface OtherInfoPresenter{
-    val artistBiographyObservable : Observable<ArtistBiographyUiState>
+    val cardObservable : Observable<CardUiState>
 
-    fun getArtistInfo(artistName: String)
+    fun updateCard(artistName: String)
 }
 
 internal class OtherInfoPresenterImpl(
-    private val artistInfoRepository: ArtistInfoRepository,
-    private val artistBiographyDescriptionHelper: ArtistBiographyHelper
+    private val repository: ArtistInfoRepository,
+    private val cardHelper: CardHelper
 ) : OtherInfoPresenter {
 
-    override val artistBiographyObservable = Subject<ArtistBiographyUiState>()
+    override val cardObservable = Subject<CardUiState>()
 
-    override fun getArtistInfo(artistName: String){
-        val artistBiography = artistInfoRepository.getArtistInfo(artistName)
-        val uiState = artistBiography.toUiState()
-        artistBiographyObservable.notify(uiState)
+    override fun updateCard(artistName: String){
+        val card = repository.getCard(artistName)
+        val uiState = card.toUiState()
+        cardObservable.notify(uiState)
     }
 
-    private fun ArtistBiography.toUiState() = ArtistBiographyUiState(
+    private fun Card.toUiState() = CardUiState(
         artistName,
-        artistBiographyDescriptionHelper.getArtistDescriptionText(this),
-        articleUrl
+        cardHelper.getDescription(this),
+        url
     )
 
 

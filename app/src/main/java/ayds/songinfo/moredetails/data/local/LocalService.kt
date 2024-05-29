@@ -1,31 +1,34 @@
 package ayds.songinfo.moredetails.data.local
 
-import ayds.songinfo.moredetails.domain.entity.ArtistBiography
+import ayds.songinfo.moredetails.domain.entity.Card
+import ayds.songinfo.moredetails.domain.entity.CardSource
 
 interface LocalService {
-    fun getArticle(artistName: String): ArtistBiography?
-    fun saveArtist(artistBiography: ArtistBiography)
+    fun getCard(artistName: String): Card?
+    fun saveCard(card: Card)
 }
 
-internal class LocalServiceImpl(private val local: ArticleDatabase) : LocalService {
+internal class LocalServiceImpl(private val local: CardDatabase) : LocalService {
 
-    override fun getArticle(artistName: String): ArtistBiography? {
-        val artistData = local.ArticleDao().getArticleByArtistName(artistName)
+    override fun getCard(artistName: String): Card? {
+        val artistData = local.cardDAO().getCardByArtistName(artistName)
         return artistData?.let {
-            ArtistBiography(
+            Card(
                 artistData.artistName,
                 artistData.biography,
-                artistData.articleUrl
+                artistData.articleUrl,
+                CardSource.LAST_FM
             )
         }
     }
 
-    override fun saveArtist(artistBiography: ArtistBiography) {
-        local.ArticleDao().insertArticle(
-            ArticleEntity(
-                artistBiography.artistName,
-                artistBiography.biography,
-                artistBiography.articleUrl
+    override fun saveCard(card: Card) {
+        local.cardDAO().insertCard(
+            CardEntity(
+                card.artistName,
+                card.description,
+                card.url,
+                card.source.ordinal
             )
         )
     }
