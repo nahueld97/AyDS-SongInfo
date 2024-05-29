@@ -3,23 +3,31 @@ package ayds.artist.external.lastFM.data
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 
-interface LastFMArticleResolver {
-    fun get(serviceData: String?, artistName: String): LastFmBiography
+interface LastFMToBiographyResolver {
+    fun map(serviceData: String?, artistName: String): LastFmBiography
 }
 
-class LastFMArticleResolverImpl : LastFMArticleResolver {
-    override fun get(
+private const val ARTIST = "artist"
+private const val BIO = "bio"
+private const val CONTENT = "content"
+private const val URL = "url"
+
+private const val NO_RESULTS = "No Results"
+
+internal class LastFMToBiographyResolverImpl : LastFMToBiographyResolver {
+    override fun map(
         serviceData: String?,
         artistName: String
     ): LastFmBiography {
         val gson = Gson()
-        val jsonObject = gson.fromJson(serviceData, JsonObject::class.java)
 
-        val artist = jsonObject["artist"].getAsJsonObject()
-        val bio = artist["bio"].getAsJsonObject()
-        val extract = bio["content"]
-        val url = artist["url"]
-        val text = extract?.asString ?: "No Results"
+        val jasonObject = gson.fromJson(serviceData, JsonObject::class.java)
+
+        val artist = jasonObject[ARTIST].getAsJsonObject()
+        val bio = artist[BIO].getAsJsonObject()
+        val extract = bio[CONTENT]
+        val url = artist[URL]
+        val text = extract?.asString ?: NO_RESULTS
 
         return LastFmBiography(artistName, text, url.asString)
     }
