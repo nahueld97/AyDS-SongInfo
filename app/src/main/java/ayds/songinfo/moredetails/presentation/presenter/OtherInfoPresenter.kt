@@ -1,5 +1,6 @@
 package ayds.songinfo.moredetails.presentation.presenter
 
+import ayds.artist.external.lastFM.data.LOGO_URL
 import ayds.observer.Observable
 import ayds.observer.Subject
 import ayds.songinfo.moredetails.domain.entity.Card
@@ -30,7 +31,8 @@ internal class OtherInfoPresenterImpl(
     private fun Card.toUiState() = CardUiState(
         artistName,
         cardHelper.getDescription(this),
-        url
+        url,
+        LOGO_URL
     )
 
 

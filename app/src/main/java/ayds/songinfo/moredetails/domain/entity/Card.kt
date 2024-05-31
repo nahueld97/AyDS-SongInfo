@@ -5,7 +5,8 @@ data class Card(
     val description: String,
     val url: String,
     val source: CardSource,
-    var isLocallyStored: Boolean = false
+    val logoURL : String,
+    var isLocallyStored: Boolean = false //TODO borrar luego del nuevo repositiry
 )
 
 enum class CardSource {

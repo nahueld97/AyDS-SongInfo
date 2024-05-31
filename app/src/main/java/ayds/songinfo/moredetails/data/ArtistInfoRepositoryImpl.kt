@@ -2,6 +2,7 @@ package ayds.songinfo.moredetails.data
 
 import ayds.artist.external.lastFM.data.LastFMService
 import ayds.artist.external.lastFM.data.LastFmBiography
+import ayds.artist.external.lastFM.data.LOGO_URL
 import ayds.songinfo.moredetails.data.local.LocalService
 import ayds.songinfo.moredetails.domain.entity.Card
 import ayds.songinfo.moredetails.domain.entity.CardSource
@@ -30,7 +31,7 @@ class ArtistInfoRepositoryImpl(
     }
 
     private fun LastFmBiography.toCard() =
-        Card(artistName, biography, articleUrl, CardSource.LAST_FM)
+        Card(artistName, biography, articleUrl, CardSource.LAST_FM, LOGO_URL)
 
     private fun Card.markItAsLocal() {
         isLocallyStored = true

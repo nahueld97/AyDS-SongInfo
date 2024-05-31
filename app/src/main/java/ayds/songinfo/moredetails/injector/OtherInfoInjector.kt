@@ -2,7 +2,7 @@ package ayds.songinfo.moredetails.injector
 
 import android.content.Context
 import androidx.room.Room
-import ayds.artist.external.newyorktimes.injector.LastFMInjector
+import ayds.artist.external.lastFM.injector.LastFMInjector
 import ayds.songinfo.moredetails.data.ArtistInfoRepositoryImpl
 import ayds.songinfo.moredetails.data.local.CardDatabase
 import ayds.songinfo.moredetails.data.local.LocalServiceImpl
@@ -19,6 +19,8 @@ object OtherInfoInjector {
 
     fun initGraph(context: Context) {
         LastFMInjector.init()
+
+        //TODO init broker, proxy y los servicios externos
 
         val cardDatabase = Room.databaseBuilder(
             context,

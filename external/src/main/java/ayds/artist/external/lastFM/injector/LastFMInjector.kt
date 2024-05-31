@@ -1,4 +1,4 @@
-package ayds.artist.external.newyorktimes.injector
+package ayds.artist.external.lastFM.injector
 
 import retrofit2.Retrofit
 import retrofit2.converter.scalars.ScalarsConverterFactory
@@ -6,9 +6,9 @@ import ayds.artist.external.lastFM.data.LastFMService
 import ayds.artist.external.lastFM.data.*
 private const val LASTFM_BASE_URL = "https://ws.audioscrobbler.com/2.0/"
 
-object LastFmInjector {
+object LastFMInjector {
 
-    private lateinit var lastFmService: LastFMService
+    lateinit var lastFmService: LastFMService
 
     fun init() {
         val retrofit = Retrofit.Builder()
